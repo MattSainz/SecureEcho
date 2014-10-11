@@ -7,7 +7,10 @@
 #include <sys/errno.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
+#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/evp.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,6 +19,7 @@
 
 #define	QLEN		  32	/* maximum connection queue length	*/
 #define	BUFSIZE		4096
+#define CERT_FILE "./ssl/server.cert"
 
 extern int	errno;
 int		errexit(const char *format, ...);
@@ -29,6 +33,9 @@ int		echo(int fd);
 int
 main(int argc, char *argv[])
 {
+  SSL_libary_init();
+	SSL_load_error_strings();
+
 	char	*portnum = "5004";	/* Standard server port number	*/
 	struct sockaddr_in fsin;	/* the from address of a client	*/
 	int	msock;			/* master server socket		*/
@@ -36,7 +43,7 @@ main(int argc, char *argv[])
 	fd_set	afds;			/* active file descriptor set	*/
 	unsigned int	alen;		/* from-address length		*/
 	int	fd, nfds;
-	
+
 	msock = passivesock(portnum, QLEN);
 
 	nfds = getdtablesize();
@@ -94,12 +101,12 @@ echo(int fd)
 int
 errexit(const char *format, ...)
 {
-        va_list args;
+  va_list args;
 
-        va_start(args, format);
-        vfprintf(stderr, format, args);
-        va_end(args);
-        exit(1);
+  va_start(args, format);
+  vfprintf(stderr, format, args);
+  va_end(args);
+exit(1);
 }
 
 /*------------------------------------------------------------------------
@@ -114,41 +121,46 @@ passivesock(const char *portnum, int qlen)
  *      qlen      - maximum server request queue length
  */
 {
-        struct sockaddr_in sin; /* an Internet endpoint address  */
-        int     s;              /* socket descriptor             */
+  struct sockaddr_in sin; /* an Internet endpoint address  */
+  int     s;              /* socket descriptor             */
 
-        memset(&sin, 0, sizeof(sin));
-        sin.sin_family = AF_INET;
-        sin.sin_addr.s_addr = INADDR_ANY;
+  memset(&sin, 0, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = INADDR_ANY;
 
-    /* Map port number (char string) to port number (int) */
-        if ((sin.sin_port=htons((unsigned short)atoi(portnum))) == 0)
-                errexit("can't get \"%s\" port number\n", portnum);
+  if ((sin.sin_port=htons((unsigned short)atoi(portnum))) == 0)
+          errexit("can't get \"%s\" port number\n", portnum);
 
-    /* Allocate a socket */
-        s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (s < 0)
-            errexit("can't create socket: %s\n", strerror(errno));
+  s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (s < 0)
+      errexit("can't create socket: %s\n", strerror(errno));
 
-    /* Bind the socket */
-        if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-            fprintf(stderr, "can't bind to %s port: %s; Trying other port\n",
-                portnum, strerror(errno));
-            sin.sin_port=htons(0); /* request a port number to be allocated
-                                   by bind */
-            if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-                errexit("can't bind: %s\n", strerror(errno));
-            else {
-                int socklen = sizeof(sin);
+  if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+      fprintf(stderr, "can't bind to %s port: %s; Trying other port\n",
+          portnum, strerror(errno));
+      sin.sin_port=htons(0); /* request a port number to be allocated
+                             by bind */
+      if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+          errexit("can't bind: %s\n", strerror(errno));
+      else {
+          int socklen = sizeof(sin);
 
-                if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
-                        errexit("getsockname: %s\n", strerror(errno));
-                printf("New server port number is %d\n", ntohs(sin.sin_port));
-            }
-        }
+          if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
+                  errexit("getsockname: %s\n", strerror(errno));
+          printf("New server port number is %d\n", ntohs(sin.sin_port));
+      }
+  }
 
-        if (listen(s, qlen) < 0)
-            errexit("can't listen on %s port: %s\n", portnum, strerror(errno));
-        return s;
+  if (listen(s, qlen) < 0)
+      errexit("can't listen on %s port: %s\n", portnum, strerror(errno));
+  return s;
 }
 
+/*
+ * loads the server's ssl cert from file system
+ */
+int
+load_cert()
+{
+  return SSL_CTX_use_certificate_file()
+}//end load cert

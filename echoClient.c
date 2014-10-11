@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/evp.h>
 
 #ifndef INADDR_NONE
 #define INADDR_NONE     0xffffffff
@@ -18,9 +22,9 @@
 
 extern int	errno;
 
-int	TCPecho(const char *host, const char *portnum);
-int	errexit(const char *format, ...);
-int	connectsock(const char *host, const char *portnum);
+int TCPecho(const char *host, const char *portnum);
+int errexit(const char *format, ...);
+int connectsock(const char *host, const char *portnum);
 
 #define	LINELEN		128
 
@@ -31,6 +35,11 @@ int	connectsock(const char *host, const char *portnum);
 int
 main(int argc, char *argv[])
 {
+	//required ssl initlization
+	//loads encryption and hash algorithems for SSL
+	SSL_libary_init();
+	SSL_load_error_strings();
+
 	char	*host = "localhost";	/* host to use if none supplied	*/
 	char	*portnum = "5004";	/* default server port number	*/
 
@@ -50,12 +59,8 @@ main(int argc, char *argv[])
 	}
 	TCPecho(host, portnum);
 	exit(0);
-}
+}//end main
 
-/*------------------------------------------------------------------------
- * TCPecho - send input to ECHO service on specified host and print reply
- *------------------------------------------------------------------------
- */
 int
 TCPecho(const char *host, const char *portnum)
 {
@@ -79,12 +84,8 @@ TCPecho(const char *host, const char *portnum)
 		}
 		fputs(buf, stdout);
 	}
-}
+}//end TCPecho
 
-/*------------------------------------------------------------------------
- * errexit - print an error message and exit
- *------------------------------------------------------------------------
- */
 int
 errexit(const char *format, ...)
 {
@@ -94,12 +95,8 @@ errexit(const char *format, ...)
         vfprintf(stderr, format, args);
         va_end(args);
         exit(1);
-}
+}//end errexit
 
-/*------------------------------------------------------------------------
- * connectsock - allocate & connect a socket using TCP 
- *------------------------------------------------------------------------
- */
 int
 connectsock(const char *host, const char *portnum)
 /*
@@ -108,6 +105,7 @@ connectsock(const char *host, const char *portnum)
  *      portnum   - server port number
  */
 {
+
         struct hostent  *phe;   /* pointer to host information entry    */
         struct sockaddr_in sin; /* an Internet endpoint address         */
         int     s;              /* socket descriptor                    */
@@ -136,5 +134,4 @@ connectsock(const char *host, const char *portnum)
                 errexit("can't connect to %s.%s: %s\n", host, portnum,
                         strerror(errno));
         return s;
-}
-
+}//end connectsock
