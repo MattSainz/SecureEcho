@@ -82,11 +82,9 @@ TCPecho(const char *host, const char *portnum)
   s = connectsock(host, portnum);
 
   err = SSL_set_fd(ssl,s);
-  printf("Err: %d \n", err);
   RETURN_SSL(err);  
 
   err = SSL_connect(ssl);
-  printf("Err: %d \n", err);
   RETURN_SSL(err);
 
   printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
@@ -115,6 +113,7 @@ TCPecho(const char *host, const char *portnum)
 
       /* read it back */
       for (inchars = 0; inchars < outchars; inchars+=n ) {
+          //redo handshake with server
         n = SSL_read(ssl, &buf[inchars], outchars - inchars);
         if (n < 0)
           errexit("socket read failed: %s\n",
