@@ -17,16 +17,16 @@
 #include <string.h>
 #include <stdio.h>
 
-#define	QLEN		  32	/* maximum connection queue length	*/
-#define	BUFSIZE		4096
+#define QLEN      32  /* maximum connection queue length  */
+#define BUFSIZE   4096
 #define CA_CERT "./ssl_files/server/cacert.pem"
 #define P_KEY "./ssl_files/server/server_priv.key"
 #define S_CERT "./ssl_files/server/server.cert"
 #define RETURN_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(1); }
-extern int	errno;
-int		errexit(const char *format, ...);
-int		passivesock(const char *portnum, int qlen);
-int		echo(SSL* ssl);
+extern int  errno;
+int   errexit(const char *format, ...);
+int   passivesock(const char *portnum, int qlen);
+int   echo(SSL* ssl);
 SSL_CTX* load_cert();
 
 /*------------------------------------------------------------------------
@@ -37,48 +37,48 @@ int
 main(int argc, char *argv[])
 {
   SSL_library_init();
-	SSL_load_error_strings();
+  SSL_load_error_strings();
 
   SSL_CTX *ctx = load_cert();
   if(ctx == NULL) printf("This is NULL..\n");
   SSL *ssl = SSL_new(ctx);
   if(ssl == NULL) printf("(ssl) This is NULL..\n");
 
-	char	*portnum = "5004";	/* Standard server port number	*/
-	struct sockaddr_in fsin;	/* the from address of a client	*/
-	int	msock;			/* master server socket		*/
-	unsigned int	alen;		/* from-address length		*/
+  char  *portnum = "5004";  /* Standard server port number  */
+  struct sockaddr_in fsin;  /* the from address of a client */
+  int msock;      /* master server socket   */
+  unsigned int  alen;   /* from-address length    */
 
-	msock = passivesock(portnum, QLEN);
+  msock = passivesock(portnum, QLEN);
 
   printf("Server started waiting for clients \n");
 
-	while (1) {
+  while (1) {
 
-		int	ssock, ssl_sock;
+    int ssock, ssl_sock;
 
-		alen = sizeof(fsin);
+    alen = sizeof(fsin);
 
     ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
 
     SSL_set_fd(ssl, ssock);
     if (ssock < 0)
     {
-			errexit("accept: %s\n", strerror(errno));
+      errexit("accept: %s\n", strerror(errno));
     }
 
     printf ("Connection from %d, port %d\n", fsin.sin_addr.s_addr,
     fsin.sin_port);
 
-		ssl_sock = SSL_accept(ssl);
+    ssl_sock = SSL_accept(ssl);
     RETURN_SSL(ssl_sock);
 
-	  while( echo(ssl) != 0 );
+    while( echo(ssl) != 0 );
 
     SSL_shutdown(ssl);
     close(ssock);
 
-	}//end while
+  }//end while
 
 }//end main
 
@@ -89,15 +89,15 @@ main(int argc, char *argv[])
 int
 echo(SSL* ssl)
 {
-	char	buf[BUFSIZ];
-	int	cc;
+  char  buf[BUFSIZ];
+  int cc;
 
-	cc = SSL_read(ssl, buf, sizeof buf);
-	if (cc < 0)
-		errexit("echo read: %s\n", strerror(errno));
-	if (cc && SSL_write(ssl, buf, cc) < 0)
-		errexit("echo write: %s\n", strerror(errno));
-	return cc;
+  cc = SSL_read(ssl, buf, sizeof buf);
+  if (cc < 0)
+    errexit("echo read: %s\n", strerror(errno));
+  if (cc && SSL_write(ssl, buf, cc) < 0)
+    errexit("echo write: %s\n", strerror(errno));
+  return cc;
 }
 
 /*------------------------------------------------------------------------

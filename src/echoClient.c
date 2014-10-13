@@ -20,14 +20,14 @@
 #define INADDR_NONE     0xffffffff
 #endif  /* INADDR_NONE */
 
-extern int	errno;
+extern int  errno;
 
 int TCPecho(const char *host, const char *portnum);
 int errexit(const char *format, ...);
 int connectsock(const char *host, const char *portnum);
 SSL_CTX* load_cert();
 
-#define	LINELEN		128
+#define LINELEN   128
 #define C_CERT "./ssl_files/client/client.cert"
 #define C_KEY "./ssl_files/client/client_priv.key"
 #define C_CA "./ssl_files/client/cacert.pem"
@@ -39,63 +39,63 @@ SSL_CTX* load_cert();
 int
 main(int argc, char *argv[])
 {
-	//required ssl initlization
-	//loads encryption and hash algorithems for SSL
+  //required ssl initlization
+  //loads encryption and hash algorithems for SSL
 
-	char	*host = "localhost";	/* host to use if none supplied	*/
-	char	*portnum = "5004";	/* default server port number	*/
+  char  *host = "localhost";  /* host to use if none supplied */
+  char  *portnum = "5004";  /* default server port number */
 
-	switch (argc) {
-	case 1:
-		host = "localhost";
-		break;
-	case 3:
-		host = argv[2];
-		/* FALL THROUGH */
-	case 2:
-		portnum = argv[1];
-		break;
-	default:
-		fprintf(stderr, "usage: TCPecho [host [port]]\n");
-		exit(1);
-	}
-	TCPecho(host, portnum);
-	exit(0);
+  switch (argc) {
+  case 1:
+    host = "localhost";
+    break;
+  case 3:
+    host = argv[2];
+    /* FALL THROUGH */
+  case 2:
+    portnum = argv[1];
+    break;
+  default:
+    fprintf(stderr, "usage: TCPecho [host [port]]\n");
+    exit(1);
+  }
+  TCPecho(host, portnum);
+  exit(0);
 }//end main
 
 int
 TCPecho(const char *host, const char *portnum)
 {
   SSL_library_init();
-	SSL_load_error_strings();
+  SSL_load_error_strings();
 
   X509 *server_cert;
 
   SSL_CTX *ctx = load_cert();
 
-	SSL *ssl = SSL_new(ctx);
+  SSL *ssl = SSL_new(ctx);
 
-	char	buf[LINELEN+1];		/* buffer for one line of text	*/
-	int	s, n, err;			/* socket descriptor, read count*/
-	int	outchars, inchars;	/* characters sent and received	*/
+  char  buf[LINELEN+1];   /* buffer for one line of text  */
+  int s, n, err;      /* socket descriptor, read count*/
+  int outchars, inchars;  /* characters sent and received */
 
-	s = connectsock(host, portnum);
+  s = connectsock(host, portnum);
 
-	err = SSL_set_fd(ssl,s);
+  err = SSL_set_fd(ssl,s);
   printf("Err: %d \n", err);
-  RETURN_SSL(err);	
+  RETURN_SSL(err);  
 
-	err = SSL_connect(ssl);
+  err = SSL_connect(ssl);
   printf("Err: %d \n", err);
   RETURN_SSL(err);
 
-	printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
+  printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
 
   server_cert = SSL_get_peer_certificate(ssl);
 
-	if( server_cert != NULL )
-	{
-	  printf ("Server certificate:\n");
+  if( server_cert != NULL )
+  {
+    printf ("Server certificate:\n");
 
     char* str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
     printf ("\t subject: %s\n", str);
@@ -108,29 +108,29 @@ TCPecho(const char *host, const char *portnum)
     X509_free (server_cert);
 
     printf("Server <<:");
-		while (fgets(buf, sizeof(buf), stdin)) {
-			buf[LINELEN] = '\0';	/* insure line null-terminated	*/
-			outchars = strlen(buf);
-			(void) SSL_write(ssl, buf, outchars);
+    while (fgets(buf, sizeof(buf), stdin)) {
+      buf[LINELEN] = '\0';  /* insure line null-terminated  */
+      outchars = strlen(buf);
+      (void) SSL_write(ssl, buf, outchars);
 
-			/* read it back */
-			for (inchars = 0; inchars < outchars; inchars+=n ) {
-				n = SSL_read(ssl, &buf[inchars], outchars - inchars);
-				if (n < 0)
-					errexit("socket read failed: %s\n",
-						strerror(errno));
-			}
+      /* read it back */
+      for (inchars = 0; inchars < outchars; inchars+=n ) {
+        n = SSL_read(ssl, &buf[inchars], outchars - inchars);
+        if (n < 0)
+          errexit("socket read failed: %s\n",
+            strerror(errno));
+      }
       printf("Reply: ");
 
-			fputs(buf, stdout);
+      fputs(buf, stdout);
       printf("Server <<:");
-		}
+    }
   }
-	else
+  else
   {
-	  printf("Err cannot connect server does not have cert\n");
-		exit(1);
-	}
+    printf("Err cannot connect server does not have cert\n");
+    exit(1);
+  }
 
 }//end TCPecho
 
@@ -188,27 +188,27 @@ SSL_CTX *
 load_cert()
 {
   SSL_CTX *ctx= SSL_CTX_new( SSLv3_client_method() );
-	if( SSL_CTX_use_certificate_file(ctx,C_CERT,SSL_FILETYPE_PEM) <= 0 )
-	{
-		printf("Error loading client cert \n");
-		exit(1);
-	}
-	//load a private key
-	if( SSL_CTX_use_PrivateKey_file(ctx, C_KEY, SSL_FILETYPE_PEM) <= 0 )
-	{
-		printf("Error loading client private key \n");
-		exit(1);
-	}
-	//load ca
-	if( !SSL_CTX_load_verify_locations(ctx,C_CA, NULL) )
+  if( SSL_CTX_use_certificate_file(ctx,C_CERT,SSL_FILETYPE_PEM) <= 0 )
   {
-		printf("Error loading ca \n");
-		exit(1);
-	}
+    printf("Error loading client cert \n");
+    exit(1);
+  }
+  //load a private key
+  if( SSL_CTX_use_PrivateKey_file(ctx, C_KEY, SSL_FILETYPE_PEM) <= 0 )
+  {
+    printf("Error loading client private key \n");
+    exit(1);
+  }
+  //load ca
+  if( !SSL_CTX_load_verify_locations(ctx,C_CA, NULL) )
+  {
+    printf("Error loading ca \n");
+    exit(1);
+  }
 
   //request for server to be certified
-	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-	SSL_CTX_set_verify_depth(ctx,1);
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+  SSL_CTX_set_verify_depth(ctx,1);
 
-	return ctx;
+  return ctx;
 }//end laod_certs
