@@ -41,42 +41,68 @@ main(int argc, char *argv[])
 
   SSL_CTX *ctx = load_cert();
   if(ctx == NULL) printf("This is NULL..\n");
-  SSL *ssl = SSL_new(ctx);
-  if(ssl == NULL) printf("(ssl) This is NULL..\n");
 
+  fd_set rfds;
+  fd_set afds;
   char  *portnum = "5004";  /* Standard server port number  */
   struct sockaddr_in fsin;  /* the from address of a client */
-  int msock;      /* master server socket   */
+  int msock, fd, nfds;      /* master server socket   */
   unsigned int  alen;   /* from-address length    */
+  SSL *local_ssl;
 
   msock = passivesock(portnum, QLEN);
+
+  nfds = getdtablesize();
+  SSL* fd_ssl[nfds];
+  FD_ZERO(&afds);
+  FD_SET(msock, &afds);
 
   printf("Server started waiting for clients \n");
 
   while (1) {
+    memcpy(&rfds, &afds, sizeof(rfds));
 
-    int ssock, ssl_sock;
-
-    alen = sizeof(fsin);
-
-    ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
-
-    SSL_set_fd(ssl, ssock);
-    if (ssock < 0)
+    if( select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0 )
     {
-      errexit("accept: %s\n", strerror(errno));
+      exit(1);
     }
 
-    printf ("Connection from %d, port %d\n", fsin.sin_addr.s_addr,
-    fsin.sin_port);
+    if( FD_ISSET(msock, &rfds) )
+    {
+      int ssock, ssl_sock;
+      SSL *ssl = SSL_new(ctx);
 
-    ssl_sock = SSL_accept(ssl);
-    RETURN_SSL(ssl_sock);
+      alen = sizeof(fsin);
 
-    while( echo(ssl) != 0 );
+      ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
 
-    SSL_shutdown(ssl);
-    close(ssock);
+      if (ssock < 0)
+      {
+        errexit("accept: %s\n", strerror(errno));
+      }
+
+      printf ("Connection from %d, port %d\n", fsin.sin_addr.s_addr,
+      fsin.sin_port);
+
+      FD_SET(ssock, &afds);
+      SSL_set_fd(ssl, ssock);
+      ssl_sock = SSL_accept(ssl);
+      RETURN_SSL(ssl_sock);
+      fd_ssl[ssock] = ssl;
+    }
+
+    for( fd = 0; fd < nfds; fd++ )
+    {
+      if( fd != msock && FD_ISSET(fd, &rfds) )
+      {
+        local_ssl = fd_ssl[fd];
+        if( echo(local_ssl) == 0 )
+        {
+          FD_CLR(fd, &afds);
+          SSL_shutdown(local_ssl);
+        }
+      }
+    }//end service clients
 
   }//end while
 
